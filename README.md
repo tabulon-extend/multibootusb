@@ -1,10 +1,21 @@
 # This fork
 
-This is an Extended Support Repository, I wil not work on this actively but PRs are welcome and I will check them and merge them. There is also no guarantee that I will fix issues.
+This is a fork for personal experimentation and development.
+
+I will not necessarily work on this actively. There is no guarantee that I will fix issues.
+
+See the links below for the original project created by @aguslr (which appears to be no longer maintained) and especially the "extended support repository" maintained by @hackerncode.
+
 
 # Multiboot USB
 
-<https://mbusb.aguslr.com/>
+## Original projet  (created by aguslr), which appears to be no longer maintained
+  - website : <https://mbusb.aguslr.com/>
+  - repo : <https://gitgub.com/aguslr/multibootusb>
+
+## Extended Support Repository (maintained by hackerncode)
+  - repo : <https://gitgub.com/hackerncode/multibootusb>, where this fork is based on.
+
 
 ## About
 
