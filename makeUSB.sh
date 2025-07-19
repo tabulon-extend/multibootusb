@@ -24,6 +24,7 @@ efi_mnt=""
 data_mnt=""
 data_subdir="boot"
 repo_dir=""
+reserve_size=
 tmp_dir="${TMPDIR-/tmp}"
 
 # Show usage
@@ -46,7 +47,11 @@ showUsage() {
 	NOTE:
 	  Partition sizes may be given with units (K,M,G); where K=KiB, M=MiB, and G=GiB; which are classical base-2 units.
 		Examples : "50M", "2G", ...
-    When no units are given, the value corresponds to number of SECTORS.
+    When no units are given, the value corresponds to "number of SECTORS".
+
+		Data partition size (which may be given as the last argument) MAY optionally be negative, such as -100M,
+		which means the data partition take up all remaining space except a portion  of given size (100M, in this case)
+		to be reserved at the end of the disk.
 
 	EOF
 }
@@ -71,6 +76,19 @@ cleanUp() {
 # Make sure USB drive is not mounted
 unmountUSB() {
 	umount -f "${1}"* 2>/dev/null || true
+}
+
+partsize() {
+	case "$1" in
+		[-+]*)	# if there is already a prefix (+ or -), return the whole thing as is.
+			printf '%s\n' "$1"
+			;;
+		[0-9]*)	# Anything that starts with a digit is prefixed with a '+'
+			printf '%s%s\n' '+' "$1"
+			;;
+		*)			# Anything else is returned as is.
+			printf '%s\n' "$1"
+	esac
 }
 
 # Trap kill signals (SIGHUP, SIGINT, SIGTERM) to do some cleanup and exit
@@ -113,6 +131,18 @@ while [ "$#" -gt 0 ]; do
 					;;
 			esac
 			;;
+		-r|--reserve)
+			case "$2" in
+				# "size" to be reserved at the end of the disk
+				[0-9]*)
+					reserve_size="$2" && shift
+					;;
+			  *)
+					printf '%s: %s is not a valid argument. Expected: size to reserve at the end of disk.\n' "$scriptname" "$2" >&2
+					cleanUp 1
+				;;
+			esac
+			;;
 		-i|--interactive)
 			interactive=1
 			;;
@@ -130,14 +160,14 @@ while [ "$#" -gt 0 ]; do
 		[a-z]*)
 			data_fmt="$1"
 			;;
-		[0-9]*)
-			data_size="$1"
+		[-+][0-9]*|[0-9]*)
+				data_size="$1"
 			;;
 		*)
 			printf '%s: %s is not a valid argument.\n' "$scriptname" "$1" >&2
 			cleanUp 1
 			;;
-	esac
+		esac
 	shift
 done
 
@@ -192,16 +222,16 @@ sgdisk --new 1::+1M --typecode 1:ef02 \
 
 # Set EFI partition size
 [ -z "$efi_size" ] || \
-    efi_size="+$efi_size"
+    efi_size=$(partsize "$efi_size")
 
-# Create EFI System partition (50M)
+# Create EFI System partition (default: 50M)
 [ "$eficonfig" -eq 1 ] && \
     { sgdisk --new 2::"${efi_size}" --typecode 2:ef00 \
     --change-name 2:"EFI System" "$usb_dev" || cleanUp 10; }
 
 # Set data partition size
 [ -z "$data_size" ] || \
-    data_size="+$data_size"
+    data_size=$(partsize "$data_size")
 
 # Set data partition information
 case "$data_fmt" in
