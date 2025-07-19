@@ -1,2 +1,3 @@
 *.cfg linguist-language=sh
+*.cfg.example linguist-language=sh
 *.inc linguist-language=sh
