@@ -15,6 +15,7 @@ scriptname=$(basename "$0")
 hybrid=0
 clone=0
 eficonfig=0
+efi_size="50M"
 interactive=0
 data_part=2
 data_fmt="vfat"
@@ -36,10 +37,16 @@ showUsage() {
 	 data-size                      Data partition size (e.g. 5G)
 	  -b,  --hybrid                 Create a hybrid MBR
 	  -c,  --clone                  Clone Git repository on the device
-	  -e,  --efi                    Enable EFI compatibility
+	  -e,  --efi  [<size>]          Enable EFI compatibility
+		                              and OPTIONALLY specify the size of the corresponding EFI partition (default: "50M").
 	  -i,  --interactive            Launch gdisk to create a hybrid MBR
 	  -h,  --help                   Display this message
 	  -s,  --subdirectory <NAME>    Specify a data subdirectory (default: "boot")
+
+	NOTE:
+	  Partition sizes may be given with units (K,M,G); where K=KiB, M=MiB, and G=GiB; which are classical base-2 units.
+		Examples : "50M", "2G", ...
+    When no units are given, the value corresponds to number of SECTORS.
 
 	EOF
 }
@@ -99,6 +106,12 @@ while [ "$#" -gt 0 ]; do
 		-e|--efi)
 			eficonfig=1
 			data_part=3
+			case "$2" in
+				# optional "size" setting for the EFI partition (e.g. : 100M)
+				[0-9]*)
+					efi_size="$2" && shift
+					;;
+			esac
 			;;
 		-i|--interactive)
 			interactive=1
@@ -177,9 +190,13 @@ sgdisk --mbrtogpt "$usb_dev" || cleanUp 10
 sgdisk --new 1::+1M --typecode 1:ef02 \
     --change-name 1:"BIOS boot partition" "$usb_dev" || cleanUp 10
 
+# Set EFI partition size
+[ -z "$efi_size" ] || \
+    efi_size="+$efi_size"
+
 # Create EFI System partition (50M)
 [ "$eficonfig" -eq 1 ] && \
-    { sgdisk --new 2::+50M --typecode 2:ef00 \
+    { sgdisk --new 2::"${efi_size}" --typecode 2:ef00 \
     --change-name 2:"EFI System" "$usb_dev" || cleanUp 10; }
 
 # Set data partition size
